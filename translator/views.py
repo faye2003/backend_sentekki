@@ -25,3 +25,4 @@ def translate_text(request):
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)}, status=400)
     return JsonResponse({"error": "POST request required"}, status=405)
+# python manage.py startapp translator
