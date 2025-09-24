@@ -33,7 +33,8 @@ SECRET_KEY = 'django-insecure-puk+21epjqgec*3gu9gw-=fb)k#rulqwppzw=(hgdpi45u(1vx
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["192.168.1.103", "192.168.1.192", "localhost", "127.0.0.1"]
+
 
 
 # Application definition
@@ -49,9 +50,19 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     "translator",
     "corsheaders",
+    "rest_framework.authtoken",
 ]
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.TokenAuthentication",
+    ),
+}
+
+
+
 MIDDLEWARE = [
+   
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -59,7 +70,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
+    
+    
 ]
 
 REST_FRAMEWORK = {
@@ -92,20 +105,25 @@ WSGI_APPLICATION = 'api_sentekki.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "sentekki",
-        "USER": "postgres",
-        "PASSWORD": "faye",
-        "HOST": "127.0.0.1",
-        "PORT": "5432",
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'sentekki_db',        # Nom de la base que tu as créée
+        'USER': 'sentekki_user',      # L'utilisateur que tu as créé
+        'PASSWORD': 'faby2021',       # Mot de passe que tu as choisi
+        'HOST': 'localhost',          # Ou l'adresse IP si base sur un serveur distant
+        'PORT': '5433',               # Port par défaut de PostgreSQL
     }
 }
 
+
 # Autoriser ton frontend Angular (http://localhost:4200)
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
+    "http://10.0.2.2:8000",  # Flutter émulateur Android
+    "http://192.168.1.100:52757",  # IP + port Flutter Web si nécessaire
+    "http://localhost:52757",
+    "http://localhost:54673",      
 ]
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # Password validation
