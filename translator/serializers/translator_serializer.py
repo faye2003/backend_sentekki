@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from translator.models import Translator
-from serializers.sentence_translator_serialiser import TranslateTextSerializer
+from serializers import TranslateTextSerializer
 
 class TranslatorSerializer(serializers.ModelSerializer):
     sentences = TranslateTextSerializer(many=True, read_only=True)
