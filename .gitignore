@@ -1,0 +1,19 @@
+# Virtual Environment
+venv/
+env/
+
+# Database
+db.sqlite3
+
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# Django-specific files
+*.log
+*.pot
+settings.py  # If you use this for local, sensitive settings
+
+# Other common ignores
+.DS_Store  # macOS specific
+.idea/     # PyCharm specific
