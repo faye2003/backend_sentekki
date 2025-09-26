@@ -8,3 +8,4 @@ urlpatterns = [
     path("translate/", translate_text, name="translate_text"),
     path("translate/sentence/<int:sentence_id>/correct/", add_correction, name="add_correction"),
 ]
+
