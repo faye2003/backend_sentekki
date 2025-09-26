@@ -29,5 +29,5 @@ class CorrectionTranslatorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CorrectionTranslator
-        fields = ["id", "sentence", "user", "correction_text", "created_at"]
+        fields = ["id", "sentence", "user", "corrected_text", "created_at"]
 

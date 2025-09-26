@@ -15,7 +15,7 @@ import re
 
 def split_into_sentences(text):
     # Découpe après ., ! ou ? suivis d'espace(s) ou retour à la ligne
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    sentences = re.split(r'(?<=[\.\!\?])\s+', text.strip())
     return [s.strip() for s in sentences if s.strip()]
 
 
@@ -115,6 +115,8 @@ def add_correction(request, sentence_id):
         sentence = TranslateText.objects.get(pk=sentence_id)
     except TranslateText.DoesNotExist:
         return Response({"error": "Phrase introuvable"}, status=404)
+    
+    translator = sentence.translator 
 
     correction_text = request.data.get("correction_text")
     if not correction_text:
@@ -122,8 +124,9 @@ def add_correction(request, sentence_id):
 
     correction = CorrectionTranslator.objects.create(
         sentence=sentence,
+        translator= translator,
         user=request.user,
-        correction_text=correction_text
+        corrected_text=correction_text
     )
 
     serializer = CorrectionTranslatorSerializer(correction)
