@@ -1,33 +1,51 @@
 from rest_framework import serializers
-from .models import Translator, TranslateText, CorrectionTranslator, Language
+from django.contrib.auth.models import User
+from .models import Translator, CorrectionTranslator, Language
+
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Language
-        fields = "__all__"
+        fields = ['id', 'code', 'name']
 
 
-class TranslateTextSerializer(serializers.ModelSerializer):
-    corrections = serializers.StringRelatedField(many=True, read_only=True)
-
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = TranslateText
-        fields = ["id", "sentence_number", "sentence_src", "sentence_translated", "corrections"]
+        model = User
+        fields = ['id', 'username', 'email']
 
 
 class TranslatorSerializer(serializers.ModelSerializer):
-    sentences = TranslateTextSerializer(many=True, read_only=True)
+    user = UserSerializer(read_only=True)
+    lang_src = LanguageSerializer(read_only=True)
+    lang_dest = LanguageSerializer(read_only=True)
 
     class Meta:
         model = Translator
-        fields = ["id", "user", "lang_src", "lang_dest", "input_text", "output_text", "created_at", "sentences"]
-
+        fields = [
+            'id',
+            'user',
+            'lang_src',
+            'lang_dest',
+            'input_text',
+            'output_text',
+            'sentence_count',
+            'sentences_data',  # le JSON avec toutes les phrases
+            'created_at'
+        ]
 
 
 class CorrectionTranslatorSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(read_only=True)
+    user = UserSerializer(read_only=True)
+    translator = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = CorrectionTranslator
-        fields = ["id", "sentence", "user", "corrected_text", "created_at"]
-
+        fields = [
+            'id',
+            'translator',
+            'user',
+            'sentence_index',
+            'corrected_text',
+            'created_at'
+        ]

@@ -6,8 +6,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from googletrans import Translator as GoogleTranslator
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Language, Translator, CorrectionTranslator
-from .serializers import TranslatorSerializer
+
+from .models import Translator, TranslateText, CorrectionTranslator, Language
+from .serializers import TranslatorSerializer, CorrectionTranslatorSerializer
 
 # Fonction utilitaire pour découper en phrases
 import re
@@ -57,12 +58,11 @@ def login(request):
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def translate_text(request):
     """
-    Traduit un texte et enregistre le tout dans Translator
-    (incluant les phrases sous forme JSON)
+    Traduit un texte et enregistre la traduction + phrases
     """
     user = request.user
     input_text = request.data.get("text")
@@ -72,79 +72,78 @@ def translate_text(request):
     if not input_text:
         return Response({"error": "input_text requis"}, status=400)
 
-    # Traduction Google
+    # Traduction avec Google
     translator = GoogleTranslator()
     translated = translator.translate(input_text, src=lang_src, dest=lang_dest)
 
-    # Gestion des langues
+    # Sauvegarde dans la DB
     src_lang, _ = Language.objects.get_or_create(code=translated.src, defaults={"name": translated.src})
     dest_lang, _ = Language.objects.get_or_create(code=lang_dest, defaults={"name": lang_dest})
 
-    # Découper les phrases
-    input_sentences = split_into_sentences(input_text)
-    output_sentences = split_into_sentences(translated.text)
-    sentence_pairs = [
-        {"index": i + 1, "src": src, "translated": out}
-        for i, (src, out) in enumerate(zip(input_sentences, output_sentences))
-    ]
-
-    # Sauvegarder dans Translator (fusionné)
-    translator_obj = Translator.objects.create(
+    trans = Translator.objects.create(
         user=user,
         lang_src=src_lang,
         lang_dest=dest_lang,
         input_text=input_text,
-        output_text=translated.text,
-        sentence_count=len(sentence_pairs),
-        sentences_data=sentence_pairs
+        output_text=translated.text
     )
 
-    serializer = TranslatorSerializer(translator_obj)
+    # Découpage en phrases
+    input_sentences = split_into_sentences(input_text)
+    output_sentences = split_into_sentences(translated.text)
+
+    sentences = [
+        TranslateText(
+            translator=trans,
+            sentence_number=i,
+            sentence_src=src,
+            sentence_translated=out
+        )
+        for i, (src, out) in enumerate(zip(input_sentences, output_sentences), start=1)
+    ]
+    TranslateText.objects.bulk_create(sentences)
+
+    # for i, (src, out) in enumerate(zip(input_sentences, output_sentences), start=1):
+    #     TranslateText.objects.create(
+    #         translator=trans,
+    #         sentence_number=i,
+    #         sentence_src=src,
+    #         sentence_translated=out
+    #     )
+
+    serializer = TranslatorSerializer(trans)
     return Response(serializer.data, status=201)
 
 
-@api_view(['POST'])
+
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def add_correction(request, translator_id, sentence_index):
+def add_correction(request, sentence_id):
     """
-    Ajoute une correction sur une phrase spécifique
+    Ajoute une correction sur une phrase traduite
     """
-    user = request.user
-    corrected_text = request.data.get("corrected_text")
-
-    if not corrected_text:
-        return Response({"error": "Texte corrigé manquant"}, status=400)
-
     try:
-        translator = Translator.objects.get(pk=translator_id)
-    except Translator.DoesNotExist:
-        return Response({"error": "Traduction introuvable"}, status=404)
+        sentence = TranslateText.objects.get(pk=sentence_id)
+    except TranslateText.DoesNotExist:
+        return Response({"error": "Phrase introuvable"}, status=404)
+    
+    translator = sentence.translator 
 
-    # Vérifier que la phrase existe
-    sentences = translator.sentences_data
-    if sentence_index < 1 or sentence_index > len(sentences):
-        return Response({"error": "Index de phrase invalide"}, status=400)
+    correction_text = request.data.get("correction_text")
+    if not correction_text:
+        return Response({"error": "correction_text requis"}, status=400)
 
-    # Mettre à jour localement la phrase
-    sentences[sentence_index - 1]['translated'] = corrected_text
-    translator.sentences_data = sentences
-    translator.output_text = " ".join([s['translated'] for s in sentences])
-    translator.save()
-
-    # Créer la correction
-    CorrectionTranslator.objects.create(
-        translator=translator,
-        user=user,
-        sentence_index=sentence_index,
-        corrected_text=corrected_text
+    correction = CorrectionTranslator.objects.create(
+        sentence=sentence,
+        translator= translator,
+        user=request.user,
+        corrected_text=correction_text
     )
 
-    return Response({
-        "message": "Correction enregistrée avec succès",
-        "translator_id": translator.id,
-        "sentence_index": sentence_index,
-        "corrected_text": corrected_text
-    }, status=200)
+    serializer = CorrectionTranslatorSerializer(correction)
+    return Response(serializer.data, status=201)
+
+
 
 # translator/views.py
 # from django.http import JsonResponse
