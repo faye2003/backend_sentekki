@@ -146,6 +146,13 @@ def add_correction(request, translator_id, sentence_index):
         "corrected_text": corrected_text
     }, status=200)
 
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
 # translator/views.py
 # from django.http import JsonResponse
 # from django.views.decorators.csrf import csrf_exempt
