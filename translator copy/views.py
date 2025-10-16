@@ -7,7 +7,9 @@ from rest_framework import status
 from googletrans import Translator as GoogleTranslator
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Language, Translator, CorrectionTranslator
-from .serializers import TranslatorSerializer, CorrectionTranslatorSerializer
+from .serializers import TranslatorSerializer
+
+# Fonction utilitaire pour découper en phrases
 import re
 
 def split_into_sentences(text):
@@ -54,12 +56,13 @@ def login(request):
     else:
         return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
-# --- Endpoint 1 : Traduction complète ---
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def translate_text(request):
     """
-    Traduit un texte et enregistre le résultat complet + phrases JSON
+    Traduit un texte et enregistre le tout dans Translator
+    (incluant les phrases sous forme JSON)
     """
     user = request.user
     input_text = request.data.get("text")
@@ -67,66 +70,81 @@ def translate_text(request):
     lang_dest = request.data.get("lang_dest", "en")
 
     if not input_text:
-        return Response({"error": "Le champ 'text' est requis."}, status=400)
+        return Response({"error": "input_text requis"}, status=400)
 
-    try:
-        translator = GoogleTranslator()
-        translated = translator.translate(input_text, src=lang_src, dest=lang_dest)
-    except Exception as e:
-        return Response({"error": f"Erreur de traduction : {str(e)}"}, status=500)
+    # Traduction Google
+    translator = GoogleTranslator()
+    translated = translator.translate(input_text, src=lang_src, dest=lang_dest)
 
+    # Gestion des langues
     src_lang, _ = Language.objects.get_or_create(code=translated.src, defaults={"name": translated.src})
     dest_lang, _ = Language.objects.get_or_create(code=lang_dest, defaults={"name": lang_dest})
 
+    # Découper les phrases
     input_sentences = split_into_sentences(input_text)
     output_sentences = split_into_sentences(translated.text)
+    sentence_pairs = [
+        {"index": i + 1, "src": src, "translated": out}
+        for i, (src, out) in enumerate(zip(input_sentences, output_sentences))
+    ]
 
-    input_json = [{"text": s} for s in input_sentences]
-    output_json = [{"text": s} for s in output_sentences]
-
-    trans = Translator.objects.create(
+    # Sauvegarder dans Translator (fusionné)
+    translator_obj = Translator.objects.create(
         user=user,
         lang_src=src_lang,
         lang_dest=dest_lang,
         input_text=input_text,
         output_text=translated.text,
-        input_sentence=input_json,
-        output_sentence=output_json,
+        sentence_count=len(sentence_pairs),
+        sentences_data=sentence_pairs
     )
 
-    serializer = TranslatorSerializer(trans)
+    serializer = TranslatorSerializer(translator_obj)
     return Response(serializer.data, status=201)
 
 
-# --- Endpoint 2 : Correction d'une phrase ---
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def add_correction(request):
+def add_correction(request, translator_id, sentence_index):
     """
-    Ajoute une correction à partir d'une phrase source et corrigée
+    Ajoute une correction sur une phrase spécifique
     """
     user = request.user
-    translator_id = request.data.get("translator_id")
-    phrase_source = request.data.get("phrase_source")
-    phrase_corrigee = request.data.get("phrase_corrigee")
+    corrected_text = request.data.get("corrected_text")
 
-    if not all([translator_id, phrase_source, phrase_corrigee]):
-        return Response({"error": "translator_id, phrase_source et phrase_corrigee sont requis."}, status=400)
+    if not corrected_text:
+        return Response({"error": "Texte corrigé manquant"}, status=400)
 
     try:
         translator = Translator.objects.get(pk=translator_id)
     except Translator.DoesNotExist:
-        return Response({"error": "Traduction introuvable."}, status=404)
+        return Response({"error": "Traduction introuvable"}, status=404)
 
-    correction = CorrectionTranslator.objects.create(
+    # Vérifier que la phrase existe
+    sentences = translator.sentences_data
+    if sentence_index < 1 or sentence_index > len(sentences):
+        return Response({"error": "Index de phrase invalide"}, status=400)
+
+    # Mettre à jour localement la phrase
+    sentences[sentence_index - 1]['translated'] = corrected_text
+    translator.sentences_data = sentences
+    translator.output_text = " ".join([s['translated'] for s in sentences])
+    translator.save()
+
+    # Créer la correction
+    CorrectionTranslator.objects.create(
         translator=translator,
         user=user,
-        phrase_source=phrase_source,
-        phrase_corrigee=phrase_corrigee
+        sentence_index=sentence_index,
+        corrected_text=corrected_text
     )
 
-    serializer = CorrectionTranslatorSerializer(correction)
-    return Response(serializer.data, status=201)
+    return Response({
+        "message": "Correction enregistrée avec succès",
+        "translator_id": translator.id,
+        "sentence_index": sentence_index,
+        "corrected_text": corrected_text
+    }, status=200)
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -134,3 +152,32 @@ def get_tokens_for_user(user):
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
+
+# translator/views.py
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+# import json
+# from googletrans import Translator
+
+# @csrf_exempt
+# def translate_text(request):
+#     if request.method == "POST":
+#         try:
+#             data = json.loads(request.body)
+#             text = data.get("text", "")
+#             dest = data.get("dest", "en")
+#             src = data.get("src", "auto")
+
+#             translator = Translator()
+#             result = translator.translate(text, src=src, dest=dest)
+
+#             return JsonResponse({
+#                 "success": True,
+#                 "translated_text": result.text,
+#                 "src": result.src,
+#                 "dest": result.dest
+#             })
+#         except Exception as e:
+#             return JsonResponse({"success": False, "error": str(e)}, status=400)
+#     return JsonResponse({"error": "POST request required"}, status=405)
+# python manage.py startapp translator

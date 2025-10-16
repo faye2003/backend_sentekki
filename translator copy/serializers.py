@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Language, Translator, CorrectionTranslator
+from .models import Translator, CorrectionTranslator, Language
 
 
 class LanguageSerializer(serializers.ModelSerializer):
@@ -29,9 +29,9 @@ class TranslatorSerializer(serializers.ModelSerializer):
             'lang_dest',
             'input_text',
             'output_text',
-            'input_sentence',
-            'output_sentence',
-            'created_at',
+            'sentence_count',
+            'sentences_data',  # le JSON avec toutes les phrases
+            'created_at'
         ]
 
 
@@ -45,7 +45,7 @@ class CorrectionTranslatorSerializer(serializers.ModelSerializer):
             'id',
             'translator',
             'user',
-            'phrase_source',
-            'phrase_corrigee',
-            'created_at',
+            'sentence_index',
+            'corrected_text',
+            'created_at'
         ]

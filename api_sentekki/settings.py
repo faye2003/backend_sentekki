@@ -94,7 +94,7 @@ WSGI_APPLICATION = 'api_sentekki.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "sentekki_fusion",
+        "NAME": "sentekki_last",
         "USER": "postgres",
         "PASSWORD": "faye",
         "HOST": "127.0.0.1",

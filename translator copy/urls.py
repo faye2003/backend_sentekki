@@ -6,5 +6,5 @@ urlpatterns = [
     path('register/', register, name='register'),
     path('login/', login, name='login'),
     path('translate/', translate_text, name='translate_text'),
-    path('correction/', add_correction, name='add_correction'),
+    path('correction/<int:translator_id>/<int:sentence_index>/', add_correction, name='add_correction'),
 ]
