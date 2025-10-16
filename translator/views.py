@@ -62,7 +62,7 @@ def translate_text(request):
     Traduit un texte et enregistre le résultat complet + phrases JSON
     """
     user = request.user
-    input_text = request.data.get("text")
+    input_text = request.data.get("input_text")
     lang_src = request.data.get("lang_src", "auto")
     lang_dest = request.data.get("lang_dest", "en")
 
