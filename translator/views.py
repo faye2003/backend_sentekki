@@ -10,6 +10,9 @@ from .models import Language, Translator, CorrectionTranslator
 from .serializers import TranslatorSerializer, CorrectionTranslatorSerializer
 import re
 
+# Fonction utilitaire pour découper en phrases
+import re
+
 def split_into_sentences(text):
     # Découpe après ., ! ou ? suivis d'espace(s) ou retour à la ligne
     sentences = re.split(r'(?<=[.!?])', text.strip())
@@ -52,11 +55,11 @@ def login(request):
             "username": user.username
         })
     else:
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"error": "Les données sont invalides"}, status=status.HTTP_401_UNAUTHORIZED)
 
 # --- Endpoint 1 : Traduction complète ---
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def translate_text(request):
     """
     Traduit un texte et enregistre le résultat complet + phrases JSON
@@ -75,9 +78,11 @@ def translate_text(request):
     except Exception as e:
         return Response({"error": f"Erreur de traduction : {str(e)}"}, status=500)
 
+    # Langues
     src_lang, _ = Language.objects.get_or_create(code=translated.src, defaults={"name": translated.src})
     dest_lang, _ = Language.objects.get_or_create(code=lang_dest, defaults={"name": lang_dest})
 
+    # Découpage en phrases
     input_sentences = split_into_sentences(input_text)
     output_sentences = split_into_sentences(translated.text)
 
@@ -85,7 +90,7 @@ def translate_text(request):
     output_json = [{"text": s} for s in output_sentences]
 
     trans = Translator.objects.create(
-        user=user,
+        user=user if user.is_authenticated else None,
         lang_src=src_lang,
         lang_dest=dest_lang,
         input_text=input_text,

@@ -12,7 +12,7 @@ class Language(models.Model):
 
 
 class Translator(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='translations')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     lang_src = models.ForeignKey(Language, on_delete=models.CASCADE, related_name='translations_src')
     lang_dest = models.ForeignKey(Language, on_delete=models.CASCADE, related_name='translations_dest')
 
