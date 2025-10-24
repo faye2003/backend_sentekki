@@ -30,7 +30,7 @@ class Translator(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username} | {self.lang_src.code} → {self.lang_dest.code}"
+        return f"{self.user} | {self.lang_src.code} → {self.lang_dest.code}"
 
 
 class CorrectionTranslator(models.Model):

@@ -86,8 +86,8 @@ def translate_text(request):
     input_sentences = split_into_sentences(input_text)
     output_sentences = split_into_sentences(translated.text)
 
-    input_json = [{"text": s} for s in input_sentences]
-    output_json = [{"text": s} for s in output_sentences]
+    input_json = [s for s in input_sentences]
+    output_json = [s for s in output_sentences]
 
     trans = Translator.objects.create(
         user=user if user.is_authenticated else None,
